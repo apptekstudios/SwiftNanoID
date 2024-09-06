@@ -4,7 +4,7 @@
 
 import Foundation
 
-public final class NanoID: Identifiable, Hashable, Equatable, Codable {
+public final class NanoID: Identifiable, Hashable, Equatable, Codable, Sendable {
 	public let string: String
 	
 	public init() {
