@@ -100,15 +100,6 @@ do {
 }
 ```
 
-### String Literals
-
-```swift
-// Create from string literal (crashes on invalid input)
-let id: NanoID = "V1StGXR8_Z5jdHi6B-myT"
-```
-
-> **Warning**: String literals crash at runtime if invalid. Use `try NanoID(_:)` for user input.
-
 ### Customizing Length
 
 ```swift
@@ -135,6 +126,46 @@ let hexId = NanoID()
 // Reset to default
 NanoID.alphabet = Set("0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_-")
 ```
+
+### Skipping Validation
+
+For cases where you need to work with NanoID strings that don't conform to the current configuration:
+
+```swift
+// Create a NanoID without validation
+let legacyId = NanoID.from(unchecked: "any-string-from-legacy-system")
+
+// Works even if string doesn't match current length/alphabet
+NanoID.length = 10
+let longId = NanoID.from(unchecked: "this-is-much-longer-than-10-chars")
+print(longId.string) // "this-is-much-longer-than-10-chars"
+```
+
+> **Warning**: No validation is performed. Use only when you trust the input source.
+
+### Non-Strict Decoding Mode
+
+When decoding NanoIDs from external sources (APIs, legacy databases), you can disable validation:
+
+```swift
+// Disable validation for decoding
+NanoID.strict = false
+
+let json = #"{"id":"legacy-id-different-format"}"#
+let data = json.data(using: .utf8)!
+
+struct Item: Decodable {
+    let id: NanoID
+}
+
+// This would fail with strict=true, but succeeds with strict=false
+let item = try JSONDecoder().decode(Item.self, from: data)
+
+// Re-enable validation
+NanoID.strict = true
+```
+
+> **Note**: The `strict` setting only affects `Codable` decoding. The throwing initializer `init(_:)` always validates.
 
 ### Using with Codable
 
@@ -233,15 +264,16 @@ The main class for generating and managing NanoIDs.
 | `string` | `String` | The string representation of the NanoID |
 | `length` (static) | `UInt` | Length of generated IDs (default: 21) |
 | `alphabet` (static) | `Set<Character>` | Characters used for generation |
+| `strict` (static) | `Bool` | Enable/disable validation during decoding (default: true) |
 
-#### Initializers
+#### Initializers & Factory Methods
 
-| Initializer | Description |
-|-------------|-------------|
+| Method | Description |
+|--------|-------------|
 | `init()` | Creates a new random NanoID |
-| `init(_ string: String) throws` | Creates a NanoID from an existing string |
-| `init(stringLiteral:)` | Creates from a string literal (crashes if invalid) |
-| `init(from decoder: Decoder) throws` | Decodes from JSON or other formats |
+| `init(_ string: String) throws` | Creates a NanoID from an existing string (always validates) |
+| `init(from decoder: Decoder) throws` | Decodes from JSON (validates when `strict` is true) |
+| `from(unchecked: String)` | Creates a NanoID without validation |
 
 #### Protocol Conformances
 
@@ -251,7 +283,6 @@ The main class for generating and managing NanoIDs.
 - `Codable` - Encode/decode to JSON and other formats
 - `Sendable` - Safe to use across concurrency boundaries
 - `CustomStringConvertible` - Pretty-print with `print()` or string interpolation
-- `ExpressibleByStringLiteral` - Create from string literals
 
 ### `NanoID.Error`
 
